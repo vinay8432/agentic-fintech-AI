@@ -229,3 +229,4 @@ def generate_customer_transactions(customer_id: str, profile_type: str, year: in
         raise ValueError(f"Unknown profile type: {profile_type}")
 
     return strategies[profile_type](customer_id, year)
+
