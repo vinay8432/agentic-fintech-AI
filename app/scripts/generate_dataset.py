@@ -15,7 +15,7 @@ OUTPUT_PATH = Path("data/generated_transactions.json")
 
 def decimal_to_string(obj):
     """
-    Recursively convert Decimal values to strings
+    Recursively convert Decimal values to stringsdag
     so JSON can serialize safely.
     """
     if isinstance(obj, Decimal):
