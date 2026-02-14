@@ -1,4 +1,5 @@
 from openai import OpenAI
+import json
 import os
 from dotenv import load_dotenv 
 from app.tools.loan_tools import get_customer_loan_eligibility
@@ -6,20 +7,26 @@ from app.tools.loan_tools import get_customer_loan_eligibility
 TOOLS = [
     {
         "type": "function",
-        "function": {
-            "name": "get_customer_loan_eligibility",
-            "description": "Evaluate whether a customer is eligible for a loan under current policy.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "customer_id": {"type": "string"},
-                    "loan_amount": {"type": "number"}
+        "name": "get_customer_loan_eligibility",
+        "description": "Evaluate whether a customer is eligible for a loan under current policy.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "customer_id": {
+                    "type": "string",
+                    "description": "Unique identifier of the customer"
                 },
-                "required": ["customer_id", "loan_amount"]
-            }
+                "loan_amount": {
+                    "type": "number",
+                    "description": "Requested loan amount"
+                }
+            },
+            "required": ["customer_id", "loan_amount"],
+            "additionalProperties": False
         }
     }
 ]
+
 
 load_dotenv(override=True)
 api_key = os.getenv('OPENAI_API_KEY')
@@ -37,40 +44,53 @@ else:
 
 
 #i want to use the local model that i have running on my machine, so i will set the base url to localhost:8000
-client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+# client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+client = OpenAI()
 
 def run_agent(user_input: str):
     response = client.responses.create(
-        model="llama3.2",  # specify the local model you want to use
+        model="gpt-4.1-mini",
         input=user_input,
         tools=TOOLS
     )
 
-    for output in response.outputs:
-        if output.type == "tool_call":
+    print("Agent raw response:", response)
+
+    for output in response.output:
+
+        if output.type == "function_call":
+
             tool_name = output.name
             arguments = output.arguments
 
-            #execute the tool function
+            if isinstance(arguments, str):
+                arguments = json.loads(arguments)
+
             if tool_name == "get_customer_loan_eligibility":
+
                 customer_id = arguments.get("customer_id")
                 loan_amount = arguments.get("loan_amount")
-                tool_result = get_customer_loan_eligibility(customer_id, loan_amount)
-                
+
+                tool_result = get_customer_loan_eligibility(
+                    customer_id, loan_amount
+                )
+
+                print(f"Tool executed → {tool_result}")
+
+                # ✅ Correct second call
                 final_response = client.responses.create(
-                    model="llama3.2",  # Use the same local model for final response
+                    model="gpt-4.1-mini",  # SAME MODEL
+                    previous_response_id=response.id,
                     input=[
                         {
-                            "role": "user",
-                            "content": user_input
-                        },
-                        {
-                            "role": "tool",
-                            "name": tool_name,
-                            "content": str(tool_result)
+                            "type": "function_call_output",
+                            "call_id": output.call_id,
+                            "output": json.dumps(tool_result)
                         }
                     ]
                 )
-                return final_response.outpput_text
+
+                return final_response.output_text
+
     return response.output_text
 

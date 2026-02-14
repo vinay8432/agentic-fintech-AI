@@ -3,7 +3,6 @@
 from decimal import Decimal
 from app.config.policy_config import POLICY_CONFIG
 
-
 def evaluate_loan_eligibility(metrics: dict, loan_amount: Decimal) -> dict:
     """
     Deterministically evaluates eligibility.
@@ -24,23 +23,23 @@ def evaluate_loan_eligibility(metrics: dict, loan_amount: Decimal) -> dict:
     if applicable_rule is None:
         return {
             "eligible": False,
-            "reason": "Loan amount exceeds policy limit"
+            "reason_code": "LOAN_AMOUNT_EXCEEDS_POLICY_LIMIT"
         }
 
     # Deterministic checks
     if loss_flag:
-        return {"eligible": False, "reason": "Business is loss making"}
+        return {"eligible": False, "reason_code": "LOSS_MAKING"}
 
     if fraud_flag:
-        return {"eligible": False, "reason": "Fraud pattern detected"}
+        return {"eligible": False, "reason_code": "FRAUD_PATTERN_DETECTED"}
 
     if applicable_rule["require_positive_growth"] and growth <= Decimal("0"):
-        return {"eligible": False, "reason": "Negative growth"}
+        return {"eligible": False, "reason_code": "NEGATIVE_GROWTH"}
 
     if cv > applicable_rule["max_cv"]:
         return {
             "eligible": False,
-            "reason": f"Volatility {cv} exceeds threshold {applicable_rule['max_cv']}"
+            "reason_code": "VOLATILITY_THRESHOLD_EXCEEDED"
         }
 
-    return {"eligible": True, "reason": "Meets all policy conditions"}
+    return {"eligible": True, "reason_code": "ELIGIBLE"}
