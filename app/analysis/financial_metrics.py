@@ -1,4 +1,4 @@
-from ast import Dict, List
+from typing import Dict, List
 from decimal import Decimal
 
 
